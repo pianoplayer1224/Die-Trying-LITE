@@ -57,19 +57,19 @@ g = dt.Game()
 g.money_mult_level = 1
 assert g.calculate_earnings(2) == 3
 
-# 4. match level 4, streak 3 -> 4 + 3*1 = 7
+# 4. match level 4, streak 3 -> 6 + 5*1 = 11
 g.match_mult_level = 4
 g.match_length = 3
-assert g.match_multiplier() == 7.0
+assert g.match_multiplier() == 11.0
 
-# 5. buying everything costs exactly $18,530
+# 5. buying everything costs exactly $28,530
 g = dt.Game()
-g.money = 18530
+g.money = 28530
 for key, *_ in dt.UPGRADES:
     while "MAXED" not in g.buy(key)[0]:
         pass
-assert g.money == 0 and g.total_spent == 18530
-assert g.splash.next() == dt.MILESTONES["spent"][18530]
+assert g.money == 0 and g.total_spent == 28530
+assert g.splash.next() == dt.MILESTONES["spent"][28530]
 assert dt.Game().buy("2") == ("Need $25 for Dice (you have $0).", dt.RED)
 
 # 6. milestones fire once, highest only
@@ -121,7 +121,7 @@ dt._WIDTHS.clear()
 # 10. menu labels, including "Upgrade" on 4 and 5
 assert dt.menu_lines(dt.Game()) == [
     "1. Roll (d2)", "2. Upgrade Dice (d2 -> d4)  $25", "3. Upgrade Speed (3s -> 2.6s)  $50",
-    "4. Upgrade Money Mult (x1 -> x1.25)  $40", "5. Upgrade Match Bonus (x2 -> x2.5)  $20",
+    "4. Upgrade Money Mult (x1 -> x1.25)  $40", "5. Upgrade Match Bonus (x2 -> x3)  $20",
     "6. Help", "0. Exit"]
 assert all(len(l) <= dt.COLS for page in dt.HELP_PAGES for l in page)
 assert all(len(l) <= dt.COLS for l in dt.menu_lines(dt.Game()))
@@ -214,7 +214,7 @@ rng = random.Random(7)
 for _ in range(400):
     a = dt.Game()
     a.die_level = rng.randrange(7)
-    a.speed_level = rng.randrange(8)
+    a.speed_level = rng.randrange(9)
     a.money_mult_level = rng.randrange(6)
     a.match_mult_level = rng.randrange(5)
     # Realistic states only: a game cannot have more wipes than rolls, nor

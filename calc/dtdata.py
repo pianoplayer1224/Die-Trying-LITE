@@ -9,7 +9,7 @@ DICE_TIERS = [
     ("d8", 8, 200),
     ("d10", 10, 500),
     ("d12", 12, 1200),
-    ("d20", 20, 4000),
+    ("d20", 20, 6000),
 ]
 
 SPEED_LEVELS = [
@@ -22,6 +22,7 @@ SPEED_LEVELS = [
     (1.0, 1000),
     (0.8, 2000),
     (0.6, 5000),
+    (0.4, 8000),
 ]
 
 MONEY_MULT_LEVELS = [
@@ -37,10 +38,10 @@ MONEY_MULT_LEVELS = [
 MATCH_MULT_LEVELS = [
     # (starting multiplier on a double, cost)
     (2.0, 0),
-    (2.5, 20),
-    (3.0, 50),
-    (3.5, 100),
-    (4.0, 250),
+    (3.0, 20),
+    (4.0, 50),
+    (5.0, 100),
+    (6.0, 250),
 ]
 
 GOAL = 500
@@ -132,7 +133,7 @@ MILESTONES = {
         2000: "$2,000 spent. All purchases are final.",
         5000: "$5,000 spent. No refunds!",
         10000: "$10,000 spent. Money can, in fact, buy happiness.",
-        18530: "You really just bought everything in the store, didn't you?",
+        28530: "You really just bought everything in the store, didn't you?",
     },
 }
 

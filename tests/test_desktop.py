@@ -47,22 +47,22 @@ assert dt.gd_round(2.5) == 3 and dt.gd_round(2.4) == 2
 # 4. match level 4, streak 3 -> 7
 g.state.match_mult_level = 4
 g.state.match_length = 3
-assert g.match_multiplier() == 7.0
+assert g.match_multiplier() == 11.0
 
-# 5. buying everything costs exactly $18,530
+# 5. buying everything costs exactly $28,530
 g = fresh()
-g.state.money = 18530
+g.state.money = 28530
 for key in dt.UPGRADES:
     while "MAXED" not in g.buy(key):
         pass
-assert g.state.money == 0 and g.state.total_spent == 18530
-assert g.splash.next() == dt.MILESTONES["spent"][18530]
+assert g.state.money == 0 and g.state.total_spent == 28530
+assert g.splash.next() == dt.MILESTONES["spent"][28530]
 assert "Not enough money" in fresh().buy("2")
 
 # 6. menu labels, including "Upgrade" on 4 and 5
 assert dt.menu_lines(fresh()) == [
     "1. Roll (d2)", "2. Upgrade Dice (d2 -> d4)  $25", "3. Upgrade Speed (3s -> 2.6s)  $50",
-    "4. Upgrade Money Mult (x1 -> x1.25)  $40", "5. Upgrade Match Bonus (x2 -> x2.5)  $20",
+    "4. Upgrade Money Mult (x1 -> x1.25)  $40", "5. Upgrade Match Bonus (x2 -> x3)  $20",
     "6. Help", "", "0. Exit"]
 
 # 7. milestones fire once, highest only
@@ -111,7 +111,7 @@ for _ in range(200):
     a = fresh()
     s = a.state
     s.die_level = rng.randrange(7)
-    s.speed_level = rng.randrange(8)
+    s.speed_level = rng.randrange(9)
     s.money_mult_level = rng.randrange(6)
     s.match_mult_level = rng.randrange(5)
     s.total_rolls = rng.randrange(8192)
@@ -146,7 +146,7 @@ assert (back.money, back.total_rolls, back.bust_count) == (18636, 792, 78)
 # 13. rejection: bad codes leave the game untouched
 victim = fresh()
 victim.state.money, victim.state.die_level = 999, 2
-for bad in ("", "toolong123", "!!!!!!!!!!", "0000000001"):   # last: money, no rolls
+for bad in ("", "toolongcode12", "!!!!!!!!!!", "0000000001"):  # last: money, no rolls
     assert not dt.load_code(victim, bad), bad
     assert (victim.state.money, victim.state.die_level) == (999, 2)
 assert dt.load_code(fresh(), dt.grouped(calc_code))    # grouped form still loads

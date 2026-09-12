@@ -127,8 +127,8 @@ class Game:
     def match_multiplier(self):
         if self.match_length < 2:
             return 1.0
-        start = 2.0 + 0.5 * self.match_mult_level
-        step = 1.0 + 0.5 * self.match_mult_level
+        start = 2.0 + 1.0 * self.match_mult_level
+        step = 1.0 + 1.0 * self.match_mult_level
         return start + step * (self.match_length - 2)
 
     def calculate_earnings(self, value):

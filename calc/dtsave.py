@@ -29,7 +29,7 @@ ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-."
 SAVE_FILE = "dtsave.txt"
 PRINT_SAVE = True   # print the code each roll, so quitting with AC is safe
 WIDTHS = [11, 9, 16, 13, 11]
-LIMITS = [1679, 511, 65535, 8191, 2047]
+LIMITS = [1889, 511, 65535, 8191, 2047]
 CODE_LEN = 10
 
 
@@ -90,7 +90,7 @@ def spent_from_levels(g):
 
 
 def save_code(g):
-    levels = ((g.die_level * 8 + g.speed_level) * 6 + g.money_mult_level) * 5 \
+    levels = ((g.die_level * 9 + g.speed_level) * 6 + g.money_mult_level) * 5 \
         + g.match_mult_level
     vals = [levels, g.progress, g.money, g.total_rolls, g.bust_count]
     for i in range(len(vals)):
@@ -119,8 +119,8 @@ def load_code(g, s):
     levels //= 5
     g.money_mult_level = levels % 6
     levels //= 6
-    g.speed_level = levels % 8
-    g.die_level = levels // 8
+    g.speed_level = levels % 9
+    g.die_level = levels // 9
     g.progress = vals[1]
     g.money = vals[2]
     g.total_rolls = vals[3]

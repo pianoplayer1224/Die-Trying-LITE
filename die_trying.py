@@ -31,7 +31,7 @@ DICE_TIERS = [
     ("d8", 8, 200),
     ("d10", 10, 500),
     ("d12", 12, 1200),
-    ("d20", 20, 4000),
+    ("d20", 20, 6000),
 ]
 
 SPEED_LEVELS = [
@@ -44,6 +44,7 @@ SPEED_LEVELS = [
     (1.0, 1000),
     (0.8, 2000),
     (0.6, 5000),
+    (0.4, 8000),
 ]
 
 MONEY_MULT_LEVELS = [
@@ -59,10 +60,10 @@ MONEY_MULT_LEVELS = [
 MATCH_MULT_LEVELS = [
     # (starting multiplier on a double, cost)
     (2.0, 0),
-    (2.5, 20),
-    (3.0, 50),
-    (3.5, 100),
-    (4.0, 250),
+    (3.0, 20),
+    (4.0, 50),
+    (5.0, 100),
+    (6.0, 250),
 ]
 
 GOAL = 500
@@ -180,7 +181,7 @@ MILESTONES = {
         2000: "$2,000 spent. All purchases are final.",
         5000: "$5,000 spent. No refunds!",
         10000: "$10,000 spent. Money can, in fact, buy happiness.",
-        18530: "You really just bought everything in the store, didn't you?",
+        28530: "You really just bought everything in the store, didn't you?",
     },
     # Keys are SECONDS of playtime.
     "playtime": {
@@ -347,8 +348,8 @@ class Game:
         s = self.state
         if s.match_length < 2:
             return 1.0
-        start = 2.0 + 0.5 * s.match_mult_level
-        step = 1.0 + 0.5 * s.match_mult_level
+        start = 2.0 + 1.0 * s.match_mult_level
+        step = 1.0 + 1.0 * s.match_mult_level
         return start + step * (s.match_length - 2)
 
     def calculate_earnings(self, value: int) -> int:
@@ -455,7 +456,7 @@ class Game:
 # file keeps playtime and best run too, which do not fit in the code.
 ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-."
 WIDTHS = [11, 9, 16, 13, 11]
-LIMITS = [1679, 511, 65535, 8191, 2047]
+LIMITS = [1889, 511, 65535, 8191, 2047]
 CODE_LEN = 10
 SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "die_trying.save")
@@ -514,7 +515,7 @@ def spent_from_levels(state: GameState) -> int:
 
 
 def save_code(state: GameState) -> str:
-    levels = ((state.die_level * 8 + state.speed_level) * 6
+    levels = ((state.die_level * 9 + state.speed_level) * 6
               + state.money_mult_level) * 5 + state.match_mult_level
     vals = [levels, state.progress, state.money,
             state.total_rolls, state.bust_count]
@@ -541,8 +542,8 @@ def load_code(game: "Game", s: str) -> bool:
     levels //= 5
     state.money_mult_level = levels % 6
     levels //= 6
-    state.speed_level = levels % 8
-    state.die_level = levels // 8
+    state.speed_level = levels % 9
+    state.die_level = levels // 9
     state.progress, state.money = vals[1], vals[2]
     state.total_rolls, state.bust_count = vals[3], vals[4]
     state.best_run = state.progress
