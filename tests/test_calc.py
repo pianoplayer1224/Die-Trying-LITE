@@ -8,6 +8,7 @@ sys.path.insert(0, str(ROOT / "tests" / "stub"))
 sys.path.insert(1, str(ROOT / "calc"))
 
 import builtins
+import os
 import tempfile
 
 import casioplot as cp
@@ -23,6 +24,8 @@ import dietry as dt
 import dtsave
 
 dtsave.SAVE_FILE = tempfile.gettempdir() + "/dt_test_save.txt"  # never the repo
+if os.path.exists(dtsave.SAVE_FILE):
+    os.remove(dtsave.SAVE_FILE)      # a leftover would load into later tests
 
 CODE = {v: k for k, v in dt.KEYS.items()}
 
@@ -203,8 +206,6 @@ print(cp.as_text(cp.frames[-1]))
 assert not cp.problems, cp.problems
 
 # ---- saving ---------------------------------------------------------------
-import os
-
 if os.path.exists(dtsave.SAVE_FILE):
     os.remove(dtsave.SAVE_FILE)
 

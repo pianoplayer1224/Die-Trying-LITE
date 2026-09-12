@@ -91,7 +91,7 @@ RANDOM_SPLASHES = [
     "Squawk 7700, Contact Guard on 121.5",
     "You are meant to be doing Maths, aren't you?",
     "Imagine having a Fancy Ass Calculator. I bet you don't even use it for Graphing.'",
-    "Get the FX-CG100 Graphing Calculator from casio.com for only £139.99! Never mind, it's sold out.",
+    "Get the FX-CG100 Graphing Calculator from casio.com for only GBP139.99! Never mind, it's sold out.",
     "'It is mathematically proven that on average your partner has more partners than you'",
     "'We are two parts of a song. He is the music, and i am the words' -From some book",
     "'If god would have wanted you to win he wouldn't have created me'",

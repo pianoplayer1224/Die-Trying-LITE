@@ -1,12 +1,20 @@
 """Tests for the terminal version, die_trying.py."""
 import builtins
+import os
 import pathlib
+import random
 import sys
+import tempfile
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(1, str(ROOT / "calc"))
 import die_trying as dt
+import dtgame          # the calculator's rules, for the cross-load test
+import dtsave          # the calculator's codec
+
+dt.SAVE_FILE = tempfile.gettempdir() + "/dt_desktop_test.save"   # never the repo
 
 
 def fresh():
@@ -92,5 +100,98 @@ answers = iter(["1", "y", "0"])
 builtins.input = lambda _p="": next(answers)
 dt.main(g)
 assert g.state.progress == 0 and not g.state.game_won
+
+# ---- saving ---------------------------------------------------------------
+if os.path.exists(dt.SAVE_FILE):
+    os.remove(dt.SAVE_FILE)
+
+# 11. round trip through a 10-character code
+rng = random.Random(11)
+for _ in range(200):
+    a = fresh()
+    s = a.state
+    s.die_level = rng.randrange(7)
+    s.speed_level = rng.randrange(8)
+    s.money_mult_level = rng.randrange(6)
+    s.match_mult_level = rng.randrange(5)
+    s.total_rolls = rng.randrange(8192)
+    s.bust_count = rng.randrange(min(2048, s.total_rolls) + 1)
+    s.progress = rng.randrange(512) if s.total_rolls else 0
+    s.money = rng.randrange(65536) if s.total_rolls else 0
+    code = dt.save_code(s)
+    assert len(code) == 10 and all(c in dt.ALPHABET for c in code), code
+    b = fresh()
+    assert dt.load_code(b, code), code
+    for f in ("die_level", "speed_level", "money_mult_level", "match_mult_level",
+              "progress", "money", "total_rolls", "bust_count"):
+        assert getattr(s, f) == getattr(b.state, f), (f, code)
+    assert b.state.total_spent == dt.spent_from_levels(s)
+    assert b.state.total_earned == b.state.money + b.state.total_spent
+
+# 12. codes are interchangeable with the calculator edition, both ways
+calc = dtgame.Game()
+calc.die_level, calc.speed_level, calc.money_mult_level = 6, 5, 4
+calc.match_mult_level, calc.progress, calc.money = 3, 101, 18636
+calc.total_rolls, calc.bust_count = 792, 78
+calc_code = dtsave.save_code(calc)
+here = fresh()
+assert dt.load_code(here, calc_code), calc_code
+assert (here.state.money, here.state.progress, here.state.die_level,
+        here.state.total_rolls, here.state.bust_count) == (18636, 101, 6, 792, 78)
+assert dt.save_code(here.state) == calc_code          # and identical going back
+back = dtgame.Game()
+assert dtsave.load_code(back, dt.save_code(here.state))
+assert (back.money, back.total_rolls, back.bust_count) == (18636, 792, 78)
+
+# 13. rejection: bad codes leave the game untouched
+victim = fresh()
+victim.state.money, victim.state.die_level = 999, 2
+for bad in ("", "toolong123", "!!!!!!!!!!", "0000000001"):   # last: money, no rolls
+    assert not dt.load_code(victim, bad), bad
+    assert (victim.state.money, victim.state.die_level) == (999, 2)
+assert dt.load_code(fresh(), dt.grouped(calc_code))    # grouped form still loads
+
+# 14. the file carries playtime and best run, which the code cannot
+g = fresh()
+g.state.money, g.state.progress, g.state.total_rolls = 4242, 300, 400
+g.state.bust_count, g.state.best_run = 40, 480
+g.state.start_time = time.monotonic() - 125.0
+assert dt.save_file(g)
+b = fresh()
+assert dt.load_file(b)
+assert (b.state.money, b.state.progress, b.state.total_rolls) == (4242, 300, 400)
+assert b.state.best_run == 480
+assert 120 < b.state.playtime < 135, b.state.playtime
+
+# 15. boot_load prefers the file; then a typed code; then a new game
+b = fresh()
+assert dt.boot_load(b) == "Save loaded." and b.state.money == 4242
+os.remove(dt.SAVE_FILE)
+builtins.input = lambda _p="": calc_code
+b = fresh()
+assert dt.boot_load(b) == "Save code loaded." and b.state.money == 18636
+assert os.path.exists(dt.SAVE_FILE)     # a typed code is written straight out
+os.remove(dt.SAVE_FILE)
+builtins.input = lambda _p="": "NOTACODE"
+b = fresh()
+assert dt.boot_load(b) == "Code not recognised - starting a new game."
+assert b.state.money == 0
+builtins.input = lambda _p="": ""
+assert dt.boot_load(fresh()) == "Welcome to DIE TRYING."
+
+# 16. playing writes the save, and Help shows the transferable code
+if os.path.exists(dt.SAVE_FILE):
+    os.remove(dt.SAVE_FILE)
+dt.time.sleep = lambda _s: None
+g = fresh()
+answers = iter(["1", "6", "0"])
+builtins.input = lambda _p="": next(answers)
+dt.main(g)                       # a supplied game must not prompt for a code
+assert os.path.exists(dt.SAVE_FILE)
+saved = open(dt.SAVE_FILE).read().split()
+assert len(saved[0]) == 10 and len(saved) == 3, saved
+b = fresh()
+assert dt.load_code(b, saved[0]) and b.state.total_rolls == 1
+os.remove(dt.SAVE_FILE)
 
 print("ALL DESKTOP TESTS PASSED")

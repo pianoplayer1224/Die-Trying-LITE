@@ -126,12 +126,26 @@ RANDOM_SPLASHES = [
     "Failure is just progress with extra steps.",
     "You miss 100% of the rolls you don't take.",
     "Optimism is not a valid strategy.",
+    "Simulation for the Nation!",
+    "Remember the 3-2-1 Rule for File Backups!",
     "seal",
+    "Visit sealnet.xyz",
+    "FILTERED.",
+    "Mark 83 1,000 lb ballute-type retarded bomb",
+    "Decisions, decisions...",
+    "sudo rm -rf --no-preserve-root",
+    "FROGE BOGEUS",
     "7EAM!",
+    "1f986_duck",
     "🦆",
+    "Squawk 7700, Contact Guard on 121.5",
+    "You are meant to be doing Maths, aren't you?",
+    "Imagine having a Fancy Ass Calculator. I bet you don't even use it for Graphing.'",
+    "Get the FX-CG100 Graphing Calculator from casio.com for only £139.99! Never mind, it's sold out.",
     "'It is mathematically proven that on average your partner has more partners than you'",
     "'We are two parts of a song. He is the music, and i am the words' -From some book",
-    "'If god would have wanted you to win he wouldn’t have created me'",
+    "'If god would have wanted you to win he wouldn't have created me'",
+
 ]
 
 MILESTONES = {
@@ -425,6 +439,171 @@ class Game:
 
 
 # =========================================================
+# SAVING — same 10-character code as the calculator edition
+# =========================================================
+# The code format is identical to calc/dtsave.py, so a code from the
+# calculator loads here and vice versa. Ten base64 characters, six bits
+# each, packed as a bit stream:
+#   levels 11 | progress 9 | money 16 | rolls 13 | wipes 11 = 60 bits
+# Spending is the sum of the costs of the levels owned and earnings are
+# money + spending, so neither is stored. There is no room for a
+# checksum; loads are sanity-checked instead (levels in range, wipes no
+# greater than rolls, no money before the first roll).
+#
+# Unlike the calculator, this version can write files, so it also
+# auto-saves to SAVE_FILE and resumes from it without any typing. The
+# file keeps playtime and best run too, which do not fit in the code.
+ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-."
+WIDTHS = [11, 9, 16, 13, 11]
+LIMITS = [1679, 511, 65535, 8191, 2047]
+CODE_LEN = 10
+SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "die_trying.save")
+
+
+def _emit(vals: list, widths: list) -> str:
+    out = ""
+    acc = n = 0
+    for value, width in zip(vals, widths):
+        acc = (acc << width) | value
+        n += width
+        while n >= 6:
+            n -= 6
+            out += ALPHABET[(acc >> n) & 63]
+            acc &= (1 << n) - 1
+    if n:
+        out += ALPHABET[(acc << (6 - n)) & 63]
+    return out
+
+
+def _read(s: str, widths: list):
+    """Field values, or None if a character is not in the alphabet."""
+    vals, acc, n, pos = [], 0, 0, 0
+    for width in widths:
+        while n < width:
+            if pos >= len(s):
+                return None
+            i = ALPHABET.find(s[pos])
+            if i < 0:
+                return None
+            pos += 1
+            acc = (acc << 6) | i
+            n += 6
+        n -= width
+        vals.append((acc >> n) & ((1 << width) - 1))
+        acc &= (1 << n) - 1
+    return vals
+
+
+def _clamp(v: int, hi: int) -> int:
+    return 0 if v < 0 else min(v, hi)
+
+
+def grouped(code: str) -> str:
+    """Two blocks of five: easier to read out and type back."""
+    return code[:5] + " " + code[5:]
+
+
+def spent_from_levels(state: GameState) -> int:
+    """Every purchase is recorded in the levels, so spending is derivable."""
+    total = 0
+    for _title, _label, attr, rows in UPGRADES.values():
+        for i in range(getattr(state, attr) + 1):
+            total += rows[i][1]
+    return total
+
+
+def save_code(state: GameState) -> str:
+    levels = ((state.die_level * 8 + state.speed_level) * 6
+              + state.money_mult_level) * 5 + state.match_mult_level
+    vals = [levels, state.progress, state.money,
+            state.total_rolls, state.bust_count]
+    return _emit([_clamp(v, hi) for v, hi in zip(vals, LIMITS)], WIDTHS)
+
+
+def load_code(game: "Game", s: str) -> bool:
+    """Validate everything before writing anything, so a bad code leaves
+    the game untouched instead of half-loaded."""
+    s = s.strip().replace(" ", "")        # tolerates the grouped form
+    if len(s) != CODE_LEN:
+        return False
+    vals = _read(s, WIDTHS)
+    if vals is None or vals[0] > LIMITS[0]:
+        return False
+    if vals[4] > vals[3]:                 # more wipes than rolls
+        return False
+    if vals[3] == 0 and (vals[1] or vals[2]):   # money before rolling
+        return False
+    state = game.state
+    state.reset()
+    levels = vals[0]
+    state.match_mult_level = levels % 5
+    levels //= 5
+    state.money_mult_level = levels % 6
+    levels //= 6
+    state.speed_level = levels % 8
+    state.die_level = levels // 8
+    state.progress, state.money = vals[1], vals[2]
+    state.total_rolls, state.bust_count = vals[3], vals[4]
+    state.best_run = state.progress
+    state.total_spent = spent_from_levels(state)
+    state.total_earned = state.money + state.total_spent
+    for name, total in (("rolls", state.total_rolls),
+                        ("busts", state.bust_count),
+                        ("earned", state.total_earned),
+                        ("spent", state.total_spent)):
+        game.splash.report(name, total)   # mark milestones as seen...
+    game.splash._pending = ""             # ...without showing them again
+    return True
+
+
+def save_file(game: "Game") -> bool:
+    """Code plus the two things it has no room for: playtime and best run."""
+    try:
+        with open(SAVE_FILE, "w") as f:
+            f.write("%s %.1f %d\n" % (save_code(game.state),
+                                      game.state.playtime, game.state.best_run))
+        return True
+    except OSError:
+        return False
+
+
+def load_file(game: "Game") -> bool:
+    try:
+        with open(SAVE_FILE) as f:
+            parts = f.read().split()
+    except OSError:
+        return False
+    if not parts or not load_code(game, parts[0]):
+        return False
+    if len(parts) > 2:
+        try:
+            # Shift the clock back so playtime carries on where it left off.
+            game.state.start_time = time.monotonic() - float(parts[1])
+            game.state.best_run = max(game.state.best_run, int(parts[2]))
+        except ValueError:
+            pass
+    return True
+
+
+def boot_load(game: "Game") -> str:
+    """Returns the first line to show. The save file wins; otherwise offer
+    to take a code typed in (a calculator code works here)."""
+    if load_file(game):
+        return "Save loaded."
+    try:
+        code = input("Save code (Enter for a new game): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return "Welcome to DIE TRYING."
+    if not code:
+        return "Welcome to DIE TRYING."
+    if load_code(game, code):
+        save_file(game)
+        return "Save code loaded."
+    return "Code not recognised - starting a new game."
+
+
+# =========================================================
 # ROLL ANIMATION — dice.gd
 # =========================================================
 def build_delays(duration: float, tick_count: int = TICK_COUNT,
@@ -536,12 +715,15 @@ def _setup_terminal() -> None:
 
 def main(game: Optional[Game] = None) -> None:
     _setup_terminal()
+    fresh = game is None      # a caller-supplied game is already set up
     game = game or Game()
     content = [
         "Welcome to DIE TRYING.",
         f"Reach the goal ({GOAL}) or... die trying.",
         "Pick 1 to roll, 6 for help.",
     ]
+    if fresh:
+        content[0] = boot_load(game)
     try:
         while True:
             render(game.splash.next(), content, game.state)
@@ -555,14 +737,23 @@ def main(game: Optional[Game] = None) -> None:
                 name, faces, _cost = game.die
                 value = animate_roll(name, faces, game.roll_duration, game.rng)
                 content = game.on_roll_done(value)
+                save_file(game)
                 if game.state.game_won:
                     if not win_screen(game):
                         break
+                    save_file(game)      # the replay starts from scratch
                     content = ["New game started. Good luck!"]
             elif choice in UPGRADES:
                 content = [game.buy(choice)]
+                save_file(game)
             elif choice == "6":
-                content = HELP_LINES
+                # Help is also where the transferable save code lives, so
+                # the menu itself stays as it is.
+                content = HELP_LINES + [
+                    "",
+                    "Save code:  " + grouped(save_code(game.state)),
+                    "(also saved automatically to die_trying.save)",
+                ]
             else:
                 content = [f"Invalid input: {choice!r}. Pick 0-6."]
     except (KeyboardInterrupt, EOFError):
